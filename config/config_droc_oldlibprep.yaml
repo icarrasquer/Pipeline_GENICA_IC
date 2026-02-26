@@ -1,0 +1,26 @@
+samples:
+  - D1_new_   # example
+
+input_dir: "/storage/research/ips_pal/GENOMICS/RAW/GENICA/Droc/A01975_441_A01975_432"
+work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READ_CLEANING"
+
+fastqc:
+  outdir: "fastqc"   # relative to work_dir
+
+adapters:
+  a_3prime: "AGATCGGAAG"
+  g_5prime_loop: "CTTCCGATCT"
+
+cutadapt:
+  threads: 4
+  minlen: 30
+  qual: 30
+  error_rate: 1
+
+loop_stop:
+  max_hits: 100
+
+adapterremoval:
+  threads: 4
+  minquality: 30
+  minlength: 30

@@ -1,0 +1,13 @@
+temp_D1_new_R1.fastq 169106943 873354 98338349
+temp_cutadap1_D1_new_R1.fastq 166337383 769211 0
+temp_cutadap2_D1_new_R1.fastq 164109691 4727 0
+temp_cutadap3_D1_new_R1.fastq 163138472 4527 0
+
+temp_cutadap2_D1_new_R1.fastq 164012785 25 0
+temp_cutadap3_D1_new_R1.fastq 163041758 21 0
+clean_D1_new_R1.fastq
+clean_D1_new_R1.fastq 160688264 21 0
+temp_D1_new_R2.fastq 169106943 257881 98998813
+clean_D1_new_R2.fastq 156475003 1 0
+clean_D1_new_R1.paired.fastq.gz 152585342
+clean_D1_new_.collapsed.fastq.gz 132068182
