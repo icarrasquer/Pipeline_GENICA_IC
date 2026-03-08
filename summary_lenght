@@ -1,8 +1,0 @@
-file                   format  type     num_seqs         sum_len  min_len  avg_len  max_len
-clean_D1_new_R1.fastq  FASTQ   DNA   160,688,264  11,933,451,155       30     74.3      101
-file                   format  type     num_seqs         sum_len  min_len  avg_len  max_len
-clean_D1_new_R2.fastq  FASTQ   DNA   156,475,003  11,485,900,471       30     73.4      101
-file                  format  type     num_seqs         sum_len  min_len  avg_len  max_len
-temp_D1_new_R1.fastq  FASTQ   DNA   169,106,943  17,079,801,243      101      101      101
-file                              format  type     num_seqs         sum_len  min_len  avg_len  max_len
-clean_D1_new_.collapsed.fastq.gz  FASTQ   DNA   132,068,182  10,446,433,956       30     79.1      191
