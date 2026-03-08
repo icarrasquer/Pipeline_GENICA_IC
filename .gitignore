@@ -1,0 +1,8 @@
+.snakemake/
+jobs/
+fastp.html
+fastp.json
+your_output*
+*.log
+scripts4testing/jobs
+

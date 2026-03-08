@@ -1,8 +1,5 @@
-samples:
-  - D1_new_   # example
-
 input_dir: "/storage/research/ips_pal/GENOMICS/RAW/GENICA/Droc/A01975_441_A01975_432"
-work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READ_CLEANING"
+work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READ_CLEANING/Droc"
 
 fastqc:
   outdir: "fastqc"   # relative to work_dir
@@ -24,3 +21,12 @@ adapterremoval:
   threads: 4
   minquality: 30
   minlength: 30
+
+bbmap:
+  xmx: "40g"
+
+reference: "/storage/research/ips_pal/capacity_storage/REFERENCE/Dryas_octopetala_ncDNA.fna"
+
+bwa:
+  threads: 4
+  aln_opts: "-l 1024 -n 0.01 -o 2"
