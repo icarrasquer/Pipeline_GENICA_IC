@@ -1,0 +1,16 @@
+sample_name	lib_code
+Droc_ARM_001	D1_new
+Droc_ARM_002	D2_new
+Droc_ARM_003	D3_new
+Droc_ARM_004	D4_new
+Droc_ARM_005	D5_new
+Droc_ARM_006	D6_new
+Droc_ARM_007	D7_new
+Droc_ARM_008	D8_new
+Droc_ARM_009	D9_new
+Droc_ARM_010	D10_new
+Droc_ARM_011	D11_new
+Droc_ARM_012	D12_new
+Droc_ARM_013	D13_new
+Droc_ARM_014	D14_new
+Droc_ARM_015	D15_new
