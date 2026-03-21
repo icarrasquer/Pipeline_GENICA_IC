@@ -61,9 +61,9 @@ rule all:
         # collapsed output
         expand(W("fastq/{sample}.collapsed.fastq.gz"), sample=SAMPLES),
         # mapping outputs
-        #expand(W("mapping/{sample}.sam"), sample=SAMPLES),
-        #expand(W("mapping/{sample}.sorted.bam"), sample=SAMPLES),
-        #expand(W("mapping/{sample}.sorted.bam.bai"), sample=SAMPLES),
+        expand(W("mapping/{sample}.sam"), sample=SAMPLES),
+        expand(W("mapping/{sample}_F3084.bam"), sample=SAMPLES),
+        expand(W("mapping/{sample}_F3084.bam.bai"), sample=SAMPLES),
 
         # stats
         expand(W("reports_per_read/{sample}_{read}.pre.stats.tsv"), sample=SAMPLES, read=READS),
@@ -72,7 +72,7 @@ rule all:
         expand(W("reports_per_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS),
         expand(W("reports_per_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES),
         expand(W("reports_per_read/{sample}.collapsed.length.tsv"), sample=SAMPLES),
-        #expand(W("reports_mapping/{sample}.sam.flagstat.txt"), sample=SAMPLES)
+        expand(W("reports_mapping/{sample}.sam.flagstat.txt"), sample=SAMPLES)
         
 
 ###############################################################################
@@ -372,8 +372,8 @@ rule sam_to_sorted_bam:
     input:
         W("mapping/{sample}.sam")
     output:
-        bam=W("mapping/{sample}.bam"),
-        bai=W("mapping/{sample}.bam.bai")
+        bam=W("mapping/{sample}_F3084.bam"),
+        bai=W("mapping/{sample}_F3084.bam.bai")
     conda:
         "envs/samtools.yaml"
     threads: 4

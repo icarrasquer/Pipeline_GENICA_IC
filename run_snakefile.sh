@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=read_cleaning
-#SBATCH --time=24:00:00
+#SBATCH --job-name=cleaning_mapping_pipeline
+#SBATCH --time=72:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=628G
 #SBATCH --partition=epyc2
 #SBATCH --qos=job_cpu
 #SBATCH --account=paygo
@@ -13,7 +13,7 @@
 
 module load Anaconda3
 source $(conda info --base)/etc/profile.d/conda.sh
-# activate the env that has snakemake (and maybe mamba)
+
 conda activate snakemake
 
 snakemake --unlock --snakefile workflow/Snakefile_droc_oldlibprep.smk
