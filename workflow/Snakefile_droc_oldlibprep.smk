@@ -20,17 +20,20 @@ wildcard_constraints:
 
 #Define input and output directories
 INPUT_DIR = config["input_dir"]
+SAMPLE_TO_FOLDER = dict(zip(META.sample_name, META.folder))
 WORK_DIR = config["work_dir"]
-FASTQC_OUT = os.path.join(WORK_DIR, config["fastqc"]["outdir"])
+FASTQC_OUT = os.path.join(WORK_DIR, "reports_read/fastqc")
 
-#Find the R1 and R2 to emrg
+#Find the R1 and R2
 def raw_fastqs(sample, read):
     old_sample = NEW_TO_OLD[sample]
+    folder = SAMPLE_TO_FOLDER[sample]
+    sample_dir = os.path.join(INPUT_DIR, folder)
 
     if read == "R1":
-        pattern = os.path.join(INPUT_DIR, f"*{old_sample}*_R1_*.fastq.gz")
+        pattern = os.path.join(sample_dir, f"*{old_sample}*_R1_*.fastq.gz")
     elif read == "R2":
-        pattern = os.path.join(INPUT_DIR, f"*{old_sample}*_R2_*.fastq.gz")
+        pattern = os.path.join(sample_dir, f"*{old_sample}*_R2_*.fastq.gz")
     else:
         raise ValueError(f"Unexpected read: {read}")
 
@@ -38,7 +41,7 @@ def raw_fastqs(sample, read):
 
     if not matches:
         raise ValueError(
-            f"No raw FASTQs found for sample={sample}, read={read} in {INPUT_DIR}. "
+            f"No raw FASTQs found for sample={sample}, read={read} in {sample_dir}. "
             f"Tried: {pattern}"
         )
 
@@ -47,6 +50,10 @@ def raw_fastqs(sample, read):
 #Helper for paths in WORK_DIR
 def W(*parts):
     return os.path.join(WORK_DIR, *parts)
+
+#Parameters filtering
+FILTER_FLAG = config["samtools"]["filter_flag"]
+MAPQ = config["samtools"]["mapq"]
 
 ###############################################################################
 # Set necessary ouputs
@@ -62,17 +69,18 @@ rule all:
         expand(W("fastq/{sample}.collapsed.fastq.gz"), sample=SAMPLES),
         # mapping outputs
         expand(W("mapping/{sample}.sam"), sample=SAMPLES),
-        expand(W("mapping/{sample}_F3084.bam"), sample=SAMPLES),
-        expand(W("mapping/{sample}_F3084.bam.bai"), sample=SAMPLES),
+        #expand(W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam"), sample=SAMPLES),
 
         # stats
-        expand(W("reports_per_read/{sample}_{read}.pre.stats.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_per_read/{sample}_{read}.pre.length.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_per_read/{sample}_{read}.post.stats.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_per_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_per_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES),
-        expand(W("reports_per_read/{sample}.collapsed.length.tsv"), sample=SAMPLES),
-        expand(W("reports_mapping/{sample}.sam.flagstat.txt"), sample=SAMPLES)
+        expand(W("reports_read/{sample}_{read}.pre.stats.tsv"), sample=SAMPLES, read=READS),
+        expand(W("reports_read/{sample}_{read}.pre.length.tsv"), sample=SAMPLES, read=READS),
+        expand(W("reports_read/{sample}_{read}.post.stats.tsv"), sample=SAMPLES, read=READS),
+        expand(W("reports_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS),
+        expand(W("reports_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES),
+        expand(W("reports_read/{sample}.collapsed.length.tsv"), sample=SAMPLES),
+        expand(W("reports_mapping/{sample}.sam.flagstat.txt"), sample=SAMPLES),
+        expand(W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}.bam.flagstat.txt"), sample=SAMPLES),
+        #expand(W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam.flagstat.txt"), sample=SAMPLES)
         
 
 ###############################################################################
@@ -96,8 +104,8 @@ rule stats_pre:
     input:
         W("tmp/{sample}_{read}.merged.fastq")
     output:
-        W("reports_per_read/{sample}_{read}.pre.stats.tsv"),
-        W("reports_per_read/{sample}_{read}.pre.length.tsv")
+        W("reports_read/{sample}_{read}.pre.stats.tsv"),
+        W("reports_read/{sample}_{read}.pre.length.tsv")
     params:
         a3 = config["adapters"]["a_3prime"],
         g5 = config["adapters"]["g_5prime_loop"]
@@ -105,7 +113,7 @@ rule stats_pre:
         "envs/seqkit.yaml"
     shell:
         r"""
-        mkdir -p {WORK_DIR}/reports_per_read
+        mkdir -p {WORK_DIR}/reports_read
         nb_reads=$(grep -c "." {input} | awk '{{print $1/4}}')
         nb_Rd1_SP=$(grep -c "{params.g5}" {input} || echo 0)
         nb_Rd2_SP=$(grep -c "{params.a3}" {input} || echo 0)
@@ -189,8 +197,8 @@ rule stats_post:
     input:
         W("fastq/{sample}_{read}.clean.fastq.gz")
     output:
-        W("reports_per_read/{sample}_{read}.post.stats.tsv"),
-        W("reports_per_read/{sample}_{read}.post.length.tsv")
+        W("reports_read/{sample}_{read}.post.stats.tsv"),
+        W("reports_read/{sample}_{read}.post.length.tsv")
     params:
         a3 = config["adapters"]["a_3prime"],
         g5 = config["adapters"]["g_5prime_loop"]
@@ -198,7 +206,7 @@ rule stats_post:
         "envs/seqkit.yaml"
     shell:
         r"""
-        mkdir -p {WORK_DIR}/reports_per_read
+        mkdir -p {WORK_DIR}/reports_read
         nb_reads=$(zgrep -c "." {input} | awk '{{print $1/4}}')
         nb_Rd1_SP=$(zgrep -c {params.g5} {input} || echo 0)
         nb_Rd2_SP=$(zgrep -c {params.a3} {input} || echo 0)
@@ -224,7 +232,7 @@ rule fastqc:
         """
 
 ###############################################################################
-# Step 8: pair/repair reads (BBMap repair.sh)
+# Step 8: repair reads
 ###############################################################################
 rule repair_reads:
     input:
@@ -236,9 +244,9 @@ rule repair_reads:
     threads: 1
     resources:
         repair_slots=1,
-        mem_mb=45000
+        mem_mb=70000
     params:
-        xmx = config["bbmap"]["xmx"],  # e.g. "60g"
+        xmx = config["bbmap"]["xmx"],  
     conda:
         "envs/bbmap.yaml"
     shell:
@@ -259,7 +267,7 @@ rule stats_paired:
     input:
         W("fastq/{sample}_R1.paired.fastq.gz")
     output:
-        W("reports_per_read/{sample}_R1.paired.length.tsv")
+        W("reports_read/{sample}_R1.paired.length.tsv")
     conda:
         "envs/seqkit.yaml"
     shell:
@@ -306,7 +314,7 @@ rule stats_collapsed:
     input:
         W("fastq/{sample}.collapsed.fastq.gz")
     output:
-        W("reports_per_read/{sample}.collapsed.length.tsv")
+        W("reports_read/{sample}.collapsed.length.tsv")
     conda:
         "envs/seqkit.yaml"
     shell:
@@ -316,10 +324,6 @@ rule stats_collapsed:
 
 ###############################################################################
 # Step 11: bwa aln mapping
-###############################################################################
-
-###############################################################################
-# Mapping: bwa aln (SE) on collapsed reads -> SAM -> flagstat -> sorted BAM
 ###############################################################################
 
 rule bwa_aln:
@@ -367,13 +371,16 @@ rule flagstat_sam:
         mkdir -p {WORK_DIR}/reports_mapping
         samtools flagstat {input} > {output}
         """
+###############################################################################
+# Step 12: SAM -> sorted BAM (remove unmapped and reads with several positions)
+###############################################################################
 
-rule sam_to_sorted_bam:
+rule sam_to_raw_bam:
     input:
         W("mapping/{sample}.sam")
     output:
-        bam=W("mapping/{sample}_F3084.bam"),
-        bai=W("mapping/{sample}_F3084.bam.bai")
+        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam"),
+        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam.bai")
     conda:
         "envs/samtools.yaml"
     threads: 4
@@ -381,13 +388,108 @@ rule sam_to_sorted_bam:
         r"""
         mkdir -p {WORK_DIR}/mapping
 
-        # Convert SAM -> sorted BAM
-        samtools view -@ {threads} -bh -F 3084 {input} \
+        samtools view -@ {threads} -bh -F {FILTER_FLAG} {input} \
           | samtools sort -@ {threads} -o {output.bam} -
 
         samtools index -@ {threads} {output.bam}
         """
 
- 
+rule flagstat_raw_bam:   
+    input:
+        W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam")
+    output:
+        W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}.bam.flagstat.txt")
+    conda:
+        "envs/samtools.yaml"
+    shell:
+        r"""
+        mkdir -p {WORK_DIR}/reports_mapping
+        samtools flagstat {input} > {output}
+        """
 
-# Next steps -> mapq20, mapdamage
+###############################################################################
+# Step 13: remove PCR duplicates
+###############################################################################
+
+rule markdup:
+    input:
+        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam")
+    output:
+        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup.bam"),
+        stats=W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}.markdup.stats.txt")
+    conda:
+        "envs/samtools.yaml"
+    resources:
+        markdup_slots=2
+    threads: 4
+    shell:
+        r"""
+        samtools sort -n -@ {threads} {input.bam} \
+        | samtools fixmate -m -@ {threads} - - \
+        | samtools sort -@ {threads} - \
+        | samtools markdup -r -s -f {output.stats} -@ {threads} - {output.bam}
+        """
+
+rule flagstat_markdup:   
+    input:
+        W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup.bam")
+    output:
+        W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_dedup.bam.flagstat.txt")
+    conda:
+        "envs/samtools.yaml"
+    shell:
+        r"""
+        mkdir -p {WORK_DIR}/reports_mapping
+        samtools flagstat {input} > {output}
+        """
+
+###############################################################################
+# Step 14: MAPQ filter
+###############################################################################
+
+rule markdup_to_MAPQ:
+    input:
+        W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup.bam")
+    output:
+        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam"),
+        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam.bai")
+    conda:
+        "envs/samtools.yaml"
+    threads: 4
+    shell:
+        r"""
+        mkdir -p {WORK_DIR}/mapping
+
+        samtools view -@ {threads} -bh -q {MAPQ} {input} \
+          | samtools sort -@ {threads} -o {output.bam} -
+
+        samtools index -@ {threads} {output.bam}
+        """
+
+rule flagstat_filtered_bam:   
+    input:
+        W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam")
+    output:
+        W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam.flagstat.txt")
+    conda:
+        "envs/samtools.yaml"
+    shell:
+        r"""
+        mkdir -p {WORK_DIR}/reports_mapping
+        samtools flagstat {input} > {output}
+        """
+
+rule mean_coverage:
+    input:
+        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam"),
+        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.bam.bai")
+    output:
+        txt=W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_dedup_q{MAPQ}.mean_coverage.txt")
+    conda:
+        "envs/samtools.yaml"
+    threads: 2
+    shell:
+        r"""
+        samtools depth -aa {input.bam} | \
+        awk '{{sum+=$3; n++}} END {{if(n>0) print sum/n; else print 0}}' > {output.txt}
+        """

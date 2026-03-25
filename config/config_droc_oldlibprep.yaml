@@ -1,10 +1,7 @@
-input_dir: "/storage/research/ips_pal/GENOMICS/RAW/GENICA/Droc/A01975_441_A01975_432"
-work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READ_CLEANING/Droc"
+input_dir: "/storage/research/ips_pal/GENOMICS/RAW"
+work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READS_TO_BAM/Droc"
 
 reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/Dryas_octopetala_ncDNA.fna"
-
-fastqc:
-  outdir: "fastqc"   # relative to work_dir
 
 adapters:
   a_3prime: "AGATCGGAAG"
@@ -25,8 +22,12 @@ adapterremoval:
   minlength: 30
 
 bbmap:
-  xmx: "40g"
+  xmx: "64g"
 
 bwa:
-  threads: 8
+  threads: 24
   aln_opts: "-l 1024 -n 0.01 -o 2"
+
+samtools:
+  filter_flag: 2052 # unmapped + supplementary
+  mapq: 30

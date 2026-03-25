@@ -2,7 +2,7 @@
 #SBATCH --job-name=cleaning_mapping_pipeline
 #SBATCH --time=72:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=55
 #SBATCH --mem=628G
 #SBATCH --partition=epyc2
 #SBATCH --qos=job_cpu
@@ -23,4 +23,4 @@ snakemake \
   --configfile config/config_droc_oldlibprep.yaml \
   --use-conda --rerun-incomplete  --rerun-triggers mtime \
   --cores ${SLURM_CPUS_PER_TASK} \
-  --resources repair_slots=1 mem_mb=64000
+  --resources repair_slots=1 markdup_slots=2 mem_mb=70000
