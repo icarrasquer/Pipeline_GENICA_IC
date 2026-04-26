@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=cleaning_mapping_pipeline
-#SBATCH --time=72:00:00
+#SBATCH --time=6:00:00
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=55
 #SBATCH --mem=628G

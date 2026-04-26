@@ -1,7 +1,12 @@
 input_dir: "/storage/research/ips_pal/GENOMICS/RAW"
 work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READS_TO_BAM/Droc"
 
-reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/Dryas_octopetala_ncDNA.fna"
+reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/Dryas_octopetala.fna"
+
+organelle_contigs:
+  - OY992841.1
+  - OY992842.1
+  - OY992843.1
 
 adapters:
   a_3prime: "AGATCGGAAG"
