@@ -2,29 +2,45 @@ import os
 from glob import glob
 import pandas as pd
 
-#Config file for the run
 configfile: "config/config_droc_oldlibprep.yaml"
 
-#Loading samples codes and new name assignation
-META = pd.read_csv("config/Droc_batch1_IDs.txt", sep="\t")
+META = pd.read_csv(config["metadata_to_run"], sep="\t")
+#Make sure the metadata to run the analysis contains
+# id_code seq_id cal_age folder
 
-OLD_TO_NEW = dict(zip(META.lib_code, META.sample_name))
-NEW_TO_OLD = dict(zip(META.sample_name, META.lib_code))
+OLD_TO_NEW = dict(zip(META["seq_id"], META["id_code"]))
+NEW_TO_OLD = dict(zip(META["id_code"], META["seq_id"]))
+SAMPLE_TO_FOLDER = dict(zip(META["id_code"], META["folder"]))
 
-SAMPLES = list(META.sample_name)
+SAMPLES = list(META["id_code"])
+META["cal_age"] = pd.to_numeric(META["cal_age"], errors="coerce")
 
-#Define R1 and R2
+MODERN_SAMPLES = list(META.loc[META["cal_age"] == 0, "id_code"])
+ANCIENT_SAMPLES = list(META.loc[META["cal_age"] > 0, "id_code"])
+
+SAMPLES = MODERN_SAMPLES + ANCIENT_SAMPLES
+
 READS = ["R1", "R2"]
-wildcard_constraints:
-    read="R1|R2"
+BRANCHES = ["collapsed", "paired"]
+ANCIENT_BRANCHES = ["collapsed", "paired"]
+MODERN_BRANCHES = ["paired"]
 
-#Define input and output directories
+wildcard_constraints:
+    read="R1|R2",
+    branch="collapsed|paired"
+
 INPUT_DIR = config["input_dir"]
-SAMPLE_TO_FOLDER = dict(zip(META.sample_name, META.folder))
 WORK_DIR = config["work_dir"]
 FASTQC_OUT = os.path.join(WORK_DIR, "reports_read/fastqc")
 
-#Find the R1 and R2
+FILTER_FLAG = config["samtools"]["filter_flag"]
+MAPQ = config["samtools"]["mapq"]
+
+
+def W(*parts):
+    return os.path.join(WORK_DIR, *parts)
+
+
 def raw_fastqs(sample, read):
     old_sample = NEW_TO_OLD[sample]
     folder = SAMPLE_TO_FOLDER[sample]
@@ -47,492 +63,91 @@ def raw_fastqs(sample, read):
 
     return matches
 
-#Helper for paths in WORK_DIR
-def W(*parts):
-    return os.path.join(WORK_DIR, *parts)
-
-#Parameters filtering
-FILTER_FLAG = config["samtools"]["filter_flag"]
-MAPQ = config["samtools"]["mapq"]
 
 ###############################################################################
-# Set necessary ouputs
+# Final outputs
 ###############################################################################
+
+ALL_TARGETS = []
+
+# read stats
+ALL_TARGETS += expand(W("reports_read/{sample}_{read}.pre.length.tsv"), sample=SAMPLES, read=READS)
+ALL_TARGETS += expand(W("reports_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS)
+ALL_TARGETS += expand(W("reports_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES)
+ALL_TARGETS += expand(W("reports_read/{sample}.collapsed.length.tsv"), sample=ANCIENT_SAMPLES)
+
+#######
+#Ancient DNA
+#######
+# SAM flagstats
+# ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"),
+#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+# final BAMs
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear.bam"), 
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# dedup flagstats
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# MAPQ flagstats
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# coverage
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# mean read length
+ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# # mapDamage
+# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}/results.txt"),
+#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+#######
+#Modern DNA
+#######
+# SAM flagstats
+# ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"),
+#                     branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+# final BAMs
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear.bam"), 
+                    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
+                    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+
+# dedup flagstats
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt"),
+                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+
+# MAPQ flagstats
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt"),
+                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+
+# coverage
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt"),
+                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+
+# mean read length
+ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
+                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
 rule all:
     input:
-        # cleaned gz fastqs
-        expand(W("fastq/{sample}_{read}.clean.fastq.gz"), sample=SAMPLES, read=READS),
-        # collapsed 
-        expand(W("fastq/{sample}.collapsed.fastq.gz"), sample=SAMPLES),
-        # mapping
-        expand(W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear.bam"), sample=SAMPLES),
-        expand(W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"), sample=SAMPLES),
-
-        # fastqc for cleaned reads
-        expand(os.path.join(FASTQC_OUT, "{sample}_{read}.clean_fastqc.html"), sample=SAMPLES, read=READS),
-        # stats
-        #expand(W("reports_read/{sample}_{read}.pre.stats.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_read/{sample}_{read}.pre.length.tsv"), sample=SAMPLES, read=READS),
-        #expand(W("reports_read/{sample}_{read}.post.stats.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS),
-        expand(W("reports_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES),
-        expand(W("reports_read/{sample}.collapsed.length.tsv"), sample=SAMPLES),
-        expand(W("reports_mapping/{sample}.sam.flagstat.txt"), sample=SAMPLES),
-        expand(W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt"), sample=SAMPLES),
-        expand(W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt"), sample=SAMPLES),
-        expand(W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt"), sample=SAMPLES),
-        expand(W(f"reports_read/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"), sample=SAMPLES)
-        
-
-###############################################################################
-# Step 1: merge raw reads into a temp fastq (uncompressed)
-###############################################################################
-rule merge_raw:
-    input:
-        lambda wc: raw_fastqs(wc.sample, wc.read)
-    output:
-        temp(W("tmp/{sample}_{read}.merged.fastq"))
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/tmp
-        zcat {input} > {output}
-        """
-
-###############################################################################
-# Step 2: initial stats (write per-sample/read stats file)
-###############################################################################
-rule stats_pre:
-    input:
-        W("tmp/{sample}_{read}.merged.fastq")
-    output:
-        W("reports_read/{sample}_{read}.pre.stats.tsv"),
-        W("reports_read/{sample}_{read}.pre.length.tsv")
-    params:
-        a3 = config["adapters"]["a_3prime"],
-        g5 = config["adapters"]["g_5prime_loop"]
-    conda:
-        "envs/seqkit.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/reports_read
-        nb_reads=$(grep -c "." {input} | awk '{{print $1/4}}')
-        nb_Rd1_SP=$(grep -c "{params.g5}" {input} || echo 0)
-        nb_Rd2_SP=$(grep -c "{params.a3}" {input} || echo 0)
-        echo -e "{wildcards.sample}_{wildcards.read}\tpre_merged\t$nb_reads\t$nb_Rd1_SP\t$nb_Rd2_SP" > {output[0]}
-        seqkit stats {input} > {output[1]}
-        """
-
-###############################################################################
-# Step 3: adapter trimming + looping 5' trimming until motif hits <= threshold
-###############################################################################
-rule cutadapt_and_loop:
-    input:
-        W("tmp/{sample}_{read}.merged.fastq")
-    output:
-        temp(W("tmp/{sample}_{read}.cutadapt1.fastq"))
-    conda:
-        "envs/cutadapt.yaml"
-    threads:
-        config["cutadapt"]["threads"]
-    params:
-        a3 = config["adapters"]["a_3prime"],
-        g5 = config["adapters"]["g_5prime_loop"],
-        minlen = config["cutadapt"]["minlen"],
-        e = config["cutadapt"]["error_rate"],
-        maxhits = config["loop_stop"]["max_hits"]
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/tmp
-
-        cutadapt -j {threads} -e {params.e} -a {params.a3} {input} -o {output} -m {params.minlen}
-
-        num=$(grep -c {params.g5} {output} || echo 0)
-        while [ "$num" -gt {params.maxhits} ]; do
-            cutadapt -j {threads} -e {params.e} -g {params.g5} {output} -o {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq -m {params.minlen}
-            mv {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq {output}
-            num=$(grep -c {params.g5} {output} || echo 0)
-        done
-        """
-
-###############################################################################
-# Step 4: polyG/polyC removal via your perl script
-###############################################################################
-rule drop_poly:
-    input:
-        W("tmp/{sample}_{read}.cutadapt1.fastq")
-    output:
-        temp(W("tmp/{sample}_{read}.poly.fastq"))
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/tmp
-        DropBpFastq_polyC.pl {input} {output}
-        """
-
-###############################################################################
-# Step 5: quality + length filter -> final cleaned fastq.gz
-###############################################################################
-rule quality_filter:
-    input:
-        W("tmp/{sample}_{read}.poly.fastq")
-    output:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
-    conda:
-        "envs/cutadapt.yaml"
-    threads:
-        config["cutadapt"]["threads"]
-    params:
-        q = config["cutadapt"]["qual"],
-        minlen = config["cutadapt"]["minlen"]
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/fastq {WORK_DIR}/tmp
-        cutadapt -j {threads} -q {params.q} {input} -o {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq -m {params.minlen}
-        gzip -c {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq > {output}
-        rm -f {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq
-        """
-
-###############################################################################
-# Step 6: post stats per read (again per-sample/read files)
-###############################################################################
-rule stats_post:
-    input:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
-    output:
-        W("reports_read/{sample}_{read}.post.stats.tsv"),
-        W("reports_read/{sample}_{read}.post.length.tsv")
-    params:
-        a3 = config["adapters"]["a_3prime"],
-        g5 = config["adapters"]["g_5prime_loop"]
-    conda:
-        "envs/seqkit.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/reports_read
-        nb_reads=$(zgrep -c "." {input} | awk '{{print $1/4}}')
-        nb_Rd1_SP=$(zgrep -c {params.g5} {input} || echo 0)
-        nb_Rd2_SP=$(zgrep -c {params.a3} {input} || echo 0)
-        echo -e "{wildcards.sample}_{wildcards.read}\tpost_clean\t$nb_reads\t$nb_Rd1_SP\t$nb_Rd2_SP" > {output[0]}
-        seqkit stats {input} > {output[1]}
-        """
-
-###############################################################################
-# Step 7: FastQC on cleaned reads
-###############################################################################
-rule fastqc:
-    input:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
-    output:
-        html = os.path.join(FASTQC_OUT, "{sample}_{read}.clean_fastqc.html"),
-        zip  = os.path.join(FASTQC_OUT, "{sample}_{read}.clean_fastqc.zip")
-    conda:
-        "envs/fastqc.yaml"
-    shell:
-        r"""
-        mkdir -p {FASTQC_OUT}
-        fastqc {input} -o {FASTQC_OUT}
-        """
-
-###############################################################################
-# Step 8: repair reads
-###############################################################################
-rule repair_reads:
-    input:
-        r1=W("fastq/{sample}_R1.clean.fastq.gz"),
-        r2=W("fastq/{sample}_R2.clean.fastq.gz")
-    output:
-        r1p=W("fastq/{sample}_R1.paired.fastq.gz"),
-        r2p=W("fastq/{sample}_R2.paired.fastq.gz")
-    threads: 1
-    resources:
-        repair_slots=1,
-        mem_mb=70000
-    params:
-        xmx = config["bbmap"]["xmx"],  
-    conda:
-        "envs/bbmap.yaml"
-    shell:
-        r"""
-        set -euo pipefail
-        module load BBMap/38.96-GCC-10.3.0
-
-        repair.sh -Xmx{params.xmx} \
-          in1={input.r1} in2={input.r2} \
-          out={output.r1p} out2={output.r2p} \
-          overwrite=t
-        """
-
-###############################################################################
-# Step 9: post stats per read (again per-sample/read files)
-###############################################################################
-rule stats_paired:
-    input:
-        W("fastq/{sample}_R1.paired.fastq.gz")
-    output:
-        W("reports_read/{sample}_R1.paired.length.tsv")
-    conda:
-        "envs/seqkit.yaml"
-    shell:
-        r"""
-        seqkit stats {input} > {output}
-        """
+        ALL_TARGETS
 
 
 ###############################################################################
-# Step 10: AdapterRemoval collapse
-###############################################################################
-rule adapterremoval_collapse:
-    input:
-        r1p=W("fastq/{sample}_R1.paired.fastq.gz"),
-        r2p=W("fastq/{sample}_R2.paired.fastq.gz")
-    output:
-        W("fastq/{sample}.collapsed.fastq.gz")
-    conda:
-        "envs/adapterremoval.yaml"
-    threads:
-        config["adapterremoval"]["threads"]
-    params:
-        minq=config["adapterremoval"]["minquality"],
-        minlen=config["adapterremoval"]["minlength"]
-    shell:
-        r"""
-        AdapterRemoval \
-            --file1 {input.r1p} \
-            --file2 {input.r2p} \
-            --gzip \
-            --threads {threads} \
-            --trimns \
-            --trimqualities \
-            --minquality {params.minq} \
-            --minlength {params.minlen} \
-            --collapse \
-            --outputcollapsed {output}
-        """
-
-###############################################################################
-# Step 10: post stats per read (again per-sample/read files)
-###############################################################################
-rule stats_collapsed:
-    input:
-        W("fastq/{sample}.collapsed.fastq.gz")
-    output:
-        W("reports_read/{sample}.collapsed.length.tsv")
-    conda:
-        "envs/seqkit.yaml"
-    shell:
-        r"""
-        seqkit stats {input} > {output}
-        """
-
-###############################################################################
-# Step 11: bwa aln mapping
+# Rule files
 ###############################################################################
 
-rule bwa_aln:
-    input:
-        ref=config["reference"],
-        fq=W("fastq/{sample}.collapsed.fastq.gz")
-    output:
-        temp(W("mapping/{sample}.sai"))
-    conda:
-        "envs/bwa.yaml"
-    threads:
-        config["bwa"]["threads"]
-    params:
-        aln_opts=config["bwa"].get("aln_opts", "")
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-        bwa aln -t {threads} {params.aln_opts} {input.ref} {input.fq} > {output}
-        """
-
-rule bwa_samse:
-    input:
-        ref=config["reference"],
-        sai=W("mapping/{sample}.sai"),
-        fq=W("fastq/{sample}.collapsed.fastq.gz")
-    output:
-        temp(W("mapping/{sample}.sam"))
-    conda:
-        "envs/bwa.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-        bwa samse {input.ref} {input.sai} {input.fq} > {output}
-        """
-
-rule flagstat_sam:
-    input:
-        W("mapping/{sample}.sam")
-    output:
-        W("reports_mapping/{sample}.sam.flagstat.txt")
-    conda:
-        "envs/samtools.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/reports_mapping
-        samtools flagstat {input} > {output}
-        """
-###############################################################################
-# Step 12: SAM -> sorted BAM (remove unmapped and reads with several positions)
-###############################################################################
-
-rule sam_to_raw_bam:
-    input:
-        W("mapping/{sample}.sam")
-    output:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam"),
-        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam.bai")
-    conda:
-        "envs/samtools.yaml"
-    threads: 4
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-
-        samtools view -@ {threads} -bh -F {FILTER_FLAG} {input} \
-          | samtools sort -@ {threads} -o {output.bam} -
-
-        samtools index -@ {threads} {output.bam}
-        """
-
-###############################################################################
-# Step 13: divide organelle and nuclear BAMs
-###############################################################################
-
-rule split_organelle_nuclear_bam:
-    input:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam"),
-        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}.bam.bai")
-    output:
-        organelle_bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_organelle.bam"),
-        nuclear_bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear.bam")
-    params:
-        organelle_contigs=" ".join(config["organelle_contigs"]),
-        organelle_pattern="|".join(c.replace(".", r"\.") for c in config["organelle_contigs"])
-    conda:
-        "envs/samtools.yaml"
-    threads: 2
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-
-        samtools view -@ {threads} -b {input.bam} {params.organelle_contigs} > {output.organelle_bam}
-
-        samtools idxstats {input.bam} \
-        | cut -f1 \
-        | grep -v '^\*$' \
-        | grep -v -E '^({params.organelle_pattern})$' \
-        > {WORK_DIR}/mapping/{wildcards.sample}.nuclear_contigs.txt
-
-        samtools view -@ {threads} -b {input.bam} $(cat {WORK_DIR}/mapping/{wildcards.sample}.nuclear_contigs.txt) > {output.nuclear_bam}
-        """
-
-
-###############################################################################
-# Step 14: remove PCR duplicates
-###############################################################################
-
-rule markdup:
-    input:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear.bam")
-    output:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam"),
-        stats=W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear.markdup.stats.txt")
-    conda:
-        "envs/samtools.yaml"
-    threads: 4
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-        mkdir -p {WORK_DIR}/reports_mapping
-
-        set -euo pipefail
-
-        samtools sort -n -@ {threads} -O bam -T {WORK_DIR}/mapping/{wildcards.sample}.tmp.namesort {input.bam} \
-        | samtools fixmate -m -@ {threads} -O bam - - \
-        | samtools sort -@ {threads} -O bam -T {WORK_DIR}/mapping/{wildcards.sample}.tmp.positionsort - \
-        | samtools markdup -r -s -@ {threads} - {output.bam} \
-        2> {output.stats}
-
-        """
-
-rule flagstat_markdup:   
-    input:
-        W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam")
-    output:
-        W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt")
-    conda:
-        "envs/samtools.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/reports_mapping
-        samtools flagstat {input} > {output}
-        """
-
-###############################################################################
-# Step 15: MAPQ filter
-###############################################################################
-
-rule MAPQ:
-    input:
-        W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam")
-    output:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
-        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.bai")
-    conda:
-        "envs/samtools.yaml"
-    threads: 4
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/mapping
-
-        samtools view -@ {threads} -bh -q {MAPQ} {input} \
-          | samtools sort -@ {threads} -o {output.bam} -
-
-        samtools index -@ {threads} {output.bam}
-        """
-
-rule flagstat_MAPQ:   
-    input:
-        W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam")
-    output:
-        W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt")
-    conda:
-        "envs/samtools.yaml"
-    shell:
-        r"""
-        mkdir -p {WORK_DIR}/reports_mapping
-        samtools flagstat {input} > {output}
-        """
-
-rule mean_coverage:
-    input:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
-        bai=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.bai")
-    output:
-        txt=W(f"reports_mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt")
-    conda:
-        "envs/samtools.yaml"
-    threads: 2
-    shell:
-        r"""
-        samtools depth -aa {input.bam} | \
-        awk '{{sum+=$3; n++}} END {{if(n>0) print sum/n; else print 0}}' > {output.txt}
-        """
-
-rule mean_read_length:
-    input:
-        bam=W(f"mapping/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam")
-    output:
-        txt=W(f"reports_read/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt")
-    conda:
-        "envs/samtools.yaml"
-    threads: 2
-    shell:
-        r"""
-
-        samtools view {input.bam} \
-        | awk '{{sum+=length($10); n++}} END {{if(n>0) print sum/n; else print 0}}' \
-        > {output.txt}
-        """
+include: "rules/read_processing.smk"
+include: "rules/mapping_collapsed.smk"
+include: "rules/mapping_paired.smk"
+include: "rules/mapping_postprocessing.smk"

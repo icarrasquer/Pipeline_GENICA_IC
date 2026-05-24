@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=cleaning_mapping_pipeline
-#SBATCH --time=6:00:00
+#SBATCH --time=76:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=55
-#SBATCH --mem=628G
+#SBATCH --cpus-per-task=110
+#SBATCH --mem=920G
 #SBATCH --partition=epyc2
 #SBATCH --qos=job_cpu
 #SBATCH --account=paygo
@@ -16,10 +16,10 @@ source $(conda info --base)/etc/profile.d/conda.sh
 
 conda activate snakemake
 
-snakemake --unlock --snakefile workflow/Snakefile_droc_oldlibprep.smk
+snakemake --unlock --snakefile Snakefile_droc_oldlibprep.smk
 
 snakemake \
-  --snakefile workflow/Snakefile_droc_oldlibprep.smk \
+  --snakefile Snakefile_droc_oldlibprep.smk \
   --configfile config/config_droc_oldlibprep.yaml \
   --use-conda --rerun-incomplete  --rerun-triggers mtime \
   --cores ${SLURM_CPUS_PER_TASK} \

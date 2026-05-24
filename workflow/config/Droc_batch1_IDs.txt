@@ -1,0 +1,18 @@
+id_code	sample_id	ext_id	lib_id	seq_id	sp	material	core	depth	cal_age	ext_date	run_code	smethod	coring_year	folder
+ARM_Droc_001_wgs				D1_new	Dryas_octopetala	leaf	bag2		4971		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_002_wgs				D2_new	Dryas_octopetala	leaf	bag2		4971		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_003_wgs				D3_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_004_wgs				D4_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_005_wgs				D5_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_006_wgs				D6_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_007_wgs				D7_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_008_wgs				D8_new	Dryas_octopetala	leaf	bag4		4816		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_009_wgs				D9_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_010_wgs				D10_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_011_wgs				D11_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_012_wgs				D12_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_013_wgs				D13_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_014_wgs				D14_new	Dryas_octopetala	leaf	bag6		3846		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_015_wgs				D15_new	Dryas_octopetala	leaf	bag8		3831		A01975_441_A01975_432	wgs		GENICA/Droc/A01975_441_A01975_432
+ARM_Droc_016_wgs				D17_new	Dryas_octopetala	leaf					A01975_441_A01975_432	wgs		DRYAS/Dryas_project/20230707-Dryas_ancient_samples_shotgun_NEW_SAMPLING2022_run_A01975_142/RAWS
+ARM_Droc_017_wgs				D18_new	Dryas_octopetala	leaf					A01975_441_A01975_432	wgs		DRYAS/Dryas_project/20230707-Dryas_ancient_samples_shotgun_NEW_SAMPLING2022_run_A01975_142/RAWS

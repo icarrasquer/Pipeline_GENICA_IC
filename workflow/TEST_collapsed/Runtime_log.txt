@@ -1,0 +1,7 @@
+2026-05-24 17:04:51,658	INFO	main: Started with the command: /storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/workflow/.snakemake/conda/7b5576f7f2ceb98ce826747071521825_/bin/mapDamage -i /storage/research/ips_pal/GENOMICS/WORK/GENICA/READS_TO_BAM/Droc/mapping/collapsed/ARM_Droc_001_wgs_F2052_nuclear_dedup_q30.bam -r /storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala.fna -d TEST_collapsed
+2026-05-24 17:16:40,964	DEBUG	main: BAM read in 716.196563 seconds
+2026-05-24 17:16:44,011	INFO	mapdamage.rscript: Performing Bayesian estimates
+2026-05-24 17:16:44,011	DEBUG	mapdamage.rscript: Call: Rscript /storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/workflow/.snakemake/conda/7b5576f7f2ceb98ce826747071521825_/lib/python3.14/site-packages/mapdamage/Rscripts/stats/runGeneral.R --args 30 10000 10 50000 0 0 1 1 0 0 1 12 TEST_collapsed/ /storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/workflow/.snakemake/conda/7b5576f7f2ceb98ce826747071521825_/lib/python3.14/site-packages/mapdamage/Rscripts/stats/ TEST_collapsed/Stats_out 0 0 0 TEST_collapsed/acgt_ratio.csv 0 0
+2026-05-24 17:20:47,957	DEBUG	mapdamage.rscript: Bayesian estimates completed in 243.945789 seconds
+2026-05-24 17:20:47,957	INFO	main: Successful run
+2026-05-24 17:20:47,957	DEBUG	main: Run completed in 963.189818 seconds
