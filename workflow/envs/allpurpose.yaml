@@ -1,0 +1,13 @@
+name: allpurpose
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - samtools
+  - bedtools
+  - vcftools
+  - bcftools
+  - r-base
+  - r-tidyverse

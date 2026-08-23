@@ -1,7 +1,8 @@
+name: kraken2
 channels:
   - conda-forge
   - bioconda
+  - defaults
+
 dependencies:
-  - samtools=1.17
-  - htslib=1.17
-  - libdeflate
+  - kraken2=2.1.3

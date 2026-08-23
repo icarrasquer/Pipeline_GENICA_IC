@@ -1,10 +1,13 @@
 input_dir: "/storage/research/ips_pal/GENOMICS/RAW"
 work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READS_TO_BAM/Droc"
-metadata_to_run: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Metadata_Droc.txt2"
+metadata_to_run: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Metadata_Droc.txt"
 #Make sure the metadata to run the analysis contains
 # id_code seq_id cal_age folder
+large_samples_file: "config/large_samples.txt"
 
-reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala.fna"
+reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala.fasta"
+masked_regions_bed: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala_masked.bed"
+
 
 organelle_contigs:
   - OY992841.1
@@ -32,6 +35,11 @@ adapterremoval:
 bbmap:
   xmx: "64g"
 
+kraken:
+  DB: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/KRAKEN/PlusPF"
+  min_coverage: [ 2, 3, 5]
+  min_samples_overlap: [ 3, 5]
+
 bwa:
   threads: 16
   aln_opts: "-l 1024 -n 0.01 -o 2"
@@ -39,3 +47,4 @@ bwa:
 samtools:
   filter_flag: 2052 # unmapped + supplementary
   mapq: 30
+

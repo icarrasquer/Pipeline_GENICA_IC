@@ -50,7 +50,7 @@ rule stats_collapsed:
 
 rule bwa_aln_collapsed:
     input:
-        ref=config["reference"],
+        ref=ancient(config["reference"]),
         fq=W("fastq/{sample}.collapsed.fastq.gz")
     output:
         temp(W("mapping/collapsed/{sample}.sai"))
@@ -69,7 +69,7 @@ rule bwa_aln_collapsed:
 
 rule bwa_samse_collapsed:
     input:
-        ref=config["reference"],
+        ref=ancient(config["reference"]),
         sai=W("mapping/collapsed/{sample}.sai"),
         fq=W("fastq/{sample}.collapsed.fastq.gz")
     output:

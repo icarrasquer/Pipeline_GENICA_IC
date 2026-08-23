@@ -5,4 +5,6 @@ fastp.json
 your_output*
 *.log
 scripts4testing/jobs
-
+HOLOGENE
+workflow/jobs
+workflow/.snakemake

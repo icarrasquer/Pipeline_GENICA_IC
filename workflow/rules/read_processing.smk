@@ -190,4 +190,106 @@ rule stats_paired:
         seqkit stats {input} > {output}
         """
 
+###############################################################################
+# Kraken2 classification
+###############################################################################
+rule kraken2:
+    input:
+        r1=W("fastq/{sample}_R1.paired.fastq.gz"),
+        r2=W("fastq/{sample}_R2.paired.fastq.gz")
+    output:
+        report=W("reports_read/kraken/{sample}.report"),
+        kraken=W("reports_read/kraken/{sample}.kraken")
+    params:
+        db=config["kraken"]["DB"]
+    conda:
+        "../envs/kraken2.yaml"
+    threads: 8
+    resources:
+        mem_mb=450000
+    shell:
+        r"""
+        mkdir -p {WORK_DIR}/kraken
 
+        kraken2 \
+            --use-names \
+            --threads {threads} \
+            --db {params.db} \
+            --report {output.report} \
+            --paired \
+            {input.r1} \
+            {input.r2} \
+            > {output.kraken}
+        """
+
+###############################################################################
+# Extract classified read positions
+###############################################################################
+
+def existing_raw_bam(wc):
+    return W(f"mapping/paired/{wc.sample}_F{FILTER_FLAG}.bam")
+
+rule extract_kraken_classified_positions:
+    input:
+        kraken=W("reports_read/kraken/{sample}.kraken"),
+        bam=existing_raw_bam
+    output:
+        bed=W("reports_read/kraken/{sample}.classified.positions.bed"),
+        tsv=W("reports_read/kraken/{sample}.classified.positions.tsv"),
+        stats=W("reports_read/kraken/{sample}.classified.stats.tsv")
+    params:
+        min_mapq=MAPQ
+    conda:
+        "../envs/allpurpose.yaml"
+    threads: 2
+    shell:
+        r"""
+        /storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/workflow/scripts/script_extract_reads_bed.sh \
+            {input.kraken} \
+            {input.bam} \
+            {output.bed} \
+            {output.tsv} \
+            {output.stats} \
+            {params.min_mapq}
+        """
+
+###############################################################################
+# Regions covered by Kraken-classified reads in at least N samples
+###############################################################################
+
+rule kraken_genomecov:
+    input:
+        bed=W("reports_read/kraken/{sample}.classified.positions.bed"),
+        fai=config["reference"] + ".fai"
+    output:
+        temp(W("reports_read/kraken/{sample}.classified.genomecov.bed"))
+    conda:
+        "../envs/allpurpose.yaml"
+    shell:
+        "bedtools genomecov -i {input.bed} -g {input.fai} -bg > {output}"
+
+
+rule kraken_filter_coverage:
+    input:
+        W("reports_read/kraken/{sample}.classified.genomecov.bed")
+    output:
+        temp(W("reports_read/kraken/{sample}.classified.cov{cov}.bed"))
+    conda:
+        "../envs/allpurpose.yaml"
+    shell:
+        r"""awk -v c={wildcards.cov} 'BEGIN{{OFS="\t"}} $4>=c {{print $1,$2,$3}}' {input} | bedtools merge > {output}"""
+
+
+rule intersect_all_kraken_beds:
+    input:
+        lambda wc: expand(
+            W("reports_read/kraken/{sample}.classified.cov{cov}.bed"),
+            sample=SAMPLES,
+            cov=wc.cov
+        )
+    output:
+        W("reports_read/kraken/classified.positions.cov{cov}.minsamples{minsamples}.bed")
+    conda:
+        "../envs/allpurpose.yaml"
+    shell:
+        r"""bedtools multiinter -i {input} | awk -v n={wildcards.minsamples} 'BEGIN{{OFS="\t"}} $4>=n {{print $1,$2,$3}}' | bedtools merge > {output}"""

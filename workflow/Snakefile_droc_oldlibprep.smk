@@ -1,4 +1,5 @@
 import os
+import re
 from glob import glob
 import pandas as pd
 
@@ -19,6 +20,62 @@ MODERN_SAMPLES = list(META.loc[META["cal_age"] == 0, "id_code"])
 ANCIENT_SAMPLES = list(META.loc[META["cal_age"] > 0, "id_code"])
 
 SAMPLES = MODERN_SAMPLES + ANCIENT_SAMPLES
+
+# Samples requiring split mapping
+
+LARGE_SAMPLES_FILE = config.get("large_samples_file", None)
+
+if LARGE_SAMPLES_FILE:
+    with open(LARGE_SAMPLES_FILE) as handle:
+        LARGE_SAMPLES = {
+            line.strip()
+            for line in handle
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+else:
+    LARGE_SAMPLES = set()
+
+# Check that every listed sample exists in the metadata
+UNKNOWN_LARGE_SAMPLES = LARGE_SAMPLES.difference(SAMPLES)
+
+if UNKNOWN_LARGE_SAMPLES:
+    raise ValueError(
+        "The following samples from large_samples_file are not present "
+        "in metadata id_code:\n  "
+        + "\n  ".join(sorted(UNKNOWN_LARGE_SAMPLES))
+    )
+
+
+NORMAL_SAMPLES = set(SAMPLES).difference(LARGE_SAMPLES)
+
+
+def samples_to_regex(samples):
+    """
+    Create an exact-match regular expression for Snakemake wildcards.
+
+    (?!) is a regular expression that never matches, used when the
+    corresponding sample set is empty.
+    """
+    if not samples:
+        return r"(?!)"
+
+    return "(?:" + "|".join(
+        re.escape(sample)
+        for sample in sorted(samples, key=len, reverse=True)
+    ) + ")"
+
+
+NORMAL_SAMPLE_REGEX = samples_to_regex(NORMAL_SAMPLES)
+LARGE_SAMPLE_REGEX = samples_to_regex(LARGE_SAMPLES)
+
+print(f"Normal mapping samples: {len(NORMAL_SAMPLES)}")
+print(f"Split mapping samples:  {len(LARGE_SAMPLES)}")
+
+if LARGE_SAMPLES:
+    print(
+        "Samples using split mapping:\n  "
+        + "\n  ".join(sorted(LARGE_SAMPLES))
+    )
 
 READS = ["R1", "R2"]
 BRANCHES = ["collapsed", "paired"]
@@ -75,68 +132,51 @@ ALL_TARGETS += expand(W("reports_read/{sample}_{read}.pre.length.tsv"), sample=S
 ALL_TARGETS += expand(W("reports_read/{sample}_{read}.post.length.tsv"), sample=SAMPLES, read=READS)
 ALL_TARGETS += expand(W("reports_read/{sample}_R1.paired.length.tsv"), sample=SAMPLES)
 ALL_TARGETS += expand(W("reports_read/{sample}.collapsed.length.tsv"), sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W("reports_read/kraken/{sample}.classified.positions.{ext}"), sample=SAMPLES, ext=["bed", "tsv"])
+ALL_TARGETS += expand(W("reports_read/kraken/{sample}.classified.stats.tsv"), sample=SAMPLES)
+ALL_TARGETS += expand(W("reports_read/kraken/classified.positions.cov{cov}.minsamples{minsamples}.bed"),
+    cov=config["kraken"]["min_coverage"],
+    minsamples=config["kraken"]["min_samples_overlap"])
 
 #######
 #Ancient DNA
 #######
-# SAM flagstats
-# ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"),
-#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
-# final BAMs
-ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear.bam"), 
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
-ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
-
-# dedup flagstats
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt"),
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
-
-# MAPQ flagstats
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt"),
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_nuclear.bam"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.bam.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
 # coverage
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt"),
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
-# mean read length
-ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
-                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_summary.tsv"),
+    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES, genomic_region=["nuclear", "organelle"])
+
+# # mean read length
+# ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
+#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
 # # mapDamage
-# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}/results.txt"),
+# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}/misincorporation.txt"),
 #                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
 #######
 #Modern DNA
 #######
-# SAM flagstats
-# ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"),
-#                     branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
-# final BAMs
-ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear.bam"), 
-                    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
-
-ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam"),
-                    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
-
-# dedup flagstats
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup.bam.flagstat.txt"),
-                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
-
-# MAPQ flagstats
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.flagstat.txt"),
-                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_nuclear.bam"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.bam.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
 # coverage
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.mean_coverage.txt"),
-                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
-# mean read length
-ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
-                      branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_summary.tsv"),
+    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES, genomic_region=["nuclear", "organelle"])
+
+
+# # mean read length
+# ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
+#                       branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
 rule all:
     input:

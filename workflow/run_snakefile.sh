@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=cleaning_mapping_pipeline
-#SBATCH --time=76:00:00
+#SBATCH --time=36:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=110
-#SBATCH --mem=920G
+#SBATCH --cpus-per-task=30
+#SBATCH --mem=320G
 #SBATCH --partition=epyc2
 #SBATCH --qos=job_cpu
 #SBATCH --account=paygo
