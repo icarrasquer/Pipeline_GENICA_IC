@@ -11,3 +11,6 @@ dependencies:
   - bcftools
   - r-base
   - r-tidyverse
+  - python>=3.10
+  - pandas
+  - matplotlib

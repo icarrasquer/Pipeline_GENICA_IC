@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=cleaning_mapping_pipeline
-#SBATCH --time=36:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=30
-#SBATCH --mem=320G
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=200G
 #SBATCH --partition=epyc2
-#SBATCH --qos=job_cpu
+#SBATCH --qos=job_cpu_long
 #SBATCH --account=paygo
 #SBATCH --wckey=ips_genica
 #SBATCH --output=jobs/smk_%j.out
@@ -17,7 +17,7 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate snakemake
 
 snakemake --unlock --snakefile Snakefile_droc_oldlibprep.smk
-
+  
 snakemake \
   --snakefile Snakefile_droc_oldlibprep.smk \
   --configfile config/config_droc_oldlibprep.yaml \

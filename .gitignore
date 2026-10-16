@@ -8,3 +8,7 @@ scripts4testing/jobs
 HOLOGENE
 workflow/jobs
 workflow/.snakemake
+ANGSD/
+BLAST/
+HOLOGENE/
+SNP_calling/

@@ -144,39 +144,46 @@ ALL_TARGETS += expand(W("reports_read/kraken/classified.positions.cov{cov}.minsa
 
 ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_nuclear.bam"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.bam.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.flagstat.txt"), branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
 # coverage
 
 ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_summary.tsv"),
     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES, genomic_region=["nuclear", "organelle"])
+# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage.pdf"),
+#     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES, genomic_region=["nuclear", "organelle"])
 
-# # mean read length
-# ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
-#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
 
-# # mapDamage
-# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}/misincorporation.txt"),
-#                     branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+# mean read length
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.fragment_length_summary.tsv"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES)
+
+# mapDamage
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}/misincorporation.txt"),
+                    branch=ANCIENT_BRANCHES, sample=ANCIENT_SAMPLES, genomic_region=["nuclear", "organelle"])
 
 #######
 #Modern DNA
 #######
 ALL_TARGETS += expand(W("reports_mapping/{branch}/{sample}.sam.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 ALL_TARGETS += expand(W(f"mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_nuclear.bam"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
-ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.bam.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.flagstat.txt"), branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
 # coverage
 
 ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_summary.tsv"),
     branch=MODERN_BRANCHES, sample=MODERN_SAMPLES, genomic_region=["nuclear", "organelle"])
+# ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage.pdf"),
+#     branch=MODERN_BRANCHES, sample=MODERN_SAMPLES, genomic_region=["nuclear", "organelle"])
 
 
-# # mean read length
-# ALL_TARGETS += expand(W(f"reports_read/{{branch}}/{{sample}}_F{FILTER_FLAG}_nuclear_dedup_q{MAPQ}.bam.mean_read_length.txt"),
-#                       branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
+# mean read length
+ALL_TARGETS += expand(W(f"reports_mapping/{{branch}}/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup.fragment_length_summary.tsv"),
+                    branch=MODERN_BRANCHES, sample=MODERN_SAMPLES)
 
 rule all:
     input:

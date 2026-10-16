@@ -6,8 +6,7 @@ metadata_to_run: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metad
 large_samples_file: "config/large_samples.txt"
 
 reference: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala.fasta"
-masked_regions_bed: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala_masked.bed"
-
+unmasked_bed: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/SPECIES/Dryas_octopetala_unmasked.bed"
 
 organelle_contigs:
   - OY992841.1
