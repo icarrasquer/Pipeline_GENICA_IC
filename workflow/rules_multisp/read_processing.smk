@@ -5,10 +5,10 @@ rule merge_raw:
     input:
         lambda wc: raw_fastqs(wc.sample, wc.read)
     output:
-        temp(W("tmp/{sample}_{read}.merged.fastq"))
+        temp(W("{species}/tmp/{sample}_{read}.merged.fastq"))
     shell:
         r"""
-        mkdir -p {WORK_DIR}/tmp
+        mkdir -p {WORK_DIR}/{wildcards.species}/tmp
         zcat {input} > {output}
         """
 
@@ -17,10 +17,10 @@ rule merge_raw:
 ###############################################################################
 rule stats_pre:
     input:
-        W("tmp/{sample}_{read}.merged.fastq")
+        W("{species}/tmp/{sample}_{read}.merged.fastq")
     output:
-        W("reports_read/{sample}_{read}.pre.stats.tsv"),
-        W("reports_read/{sample}_{read}.pre.length.tsv")
+        W("{species}/reports_read/{sample}_{read}.pre.stats.tsv"),
+        W("{species}/reports_read/{sample}_{read}.pre.length.tsv")
     params:
         a3 = config["adapters"]["a_3prime"],
         g5 = config["adapters"]["g_5prime_loop"]
@@ -28,7 +28,7 @@ rule stats_pre:
         "../envs/seqkit.yaml"
     shell:
         r"""
-        mkdir -p {WORK_DIR}/reports_read
+        mkdir -p {WORK_DIR}/{wildcards.species}/reports_read
         nb_reads=$(grep -c "." {input} | awk '{{print $1/4}}')
         nb_Rd1_SP=$(grep -c "{params.g5}" {input} || echo 0)
         nb_Rd2_SP=$(grep -c "{params.a3}" {input} || echo 0)
@@ -41,9 +41,9 @@ rule stats_pre:
 ###############################################################################
 rule cutadapt_and_loop:
     input:
-        W("tmp/{sample}_{read}.merged.fastq")
+        W("{species}/tmp/{sample}_{read}.merged.fastq")
     output:
-        temp(W("tmp/{sample}_{read}.cutadapt1.fastq"))
+        temp(W("{species}/tmp/{sample}_{read}.cutadapt1.fastq"))
     conda:
         "../envs/cutadapt.yaml"
     threads:
@@ -56,29 +56,29 @@ rule cutadapt_and_loop:
         maxhits = config["loop_stop"]["max_hits"]
     shell:
         r"""
-        mkdir -p {WORK_DIR}/tmp
+        mkdir -p {WORK_DIR}/{wildcards.species}/tmp
 
         cutadapt -j {threads} -e {params.e} -a {params.a3} {input} -o {output} -m {params.minlen}
 
         num=$(grep -c {params.g5} {output} || echo 0)
         while [ "$num" -gt {params.maxhits} ]; do
-            cutadapt -j {threads} -e {params.e} -g {params.g5} {output} -o {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq -m {params.minlen}
-            mv {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq {output}
+            cutadapt -j {threads} -e {params.e} -g {params.g5} {output} -o {WORK_DIR}/{wildcards.species}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq -m {params.minlen}
+            mv {WORK_DIR}/{wildcards.species}/tmp/{wildcards.sample}_{wildcards.read}.loop.fastq {output}
             num=$(grep -c {params.g5} {output} || echo 0)
         done
         """
 
 ###############################################################################
-# polyG/polyC removal via your perl script
+# polyG/polyC removal via perl script
 ###############################################################################
 rule drop_poly:
     input:
-        W("tmp/{sample}_{read}.cutadapt1.fastq")
+        W("{species}/tmp/{sample}_{read}.cutadapt1.fastq")
     output:
-        temp(W("tmp/{sample}_{read}.poly.fastq"))
+        temp(W("{species}/tmp/{sample}_{read}.poly.fastq"))
     shell:
         r"""
-        mkdir -p {WORK_DIR}/tmp
+        mkdir -p {WORK_DIR}/{wildcards.species}/tmp
         DropBpFastq_polyC.pl {input} {output}
         """
 
@@ -87,9 +87,9 @@ rule drop_poly:
 ###############################################################################
 rule quality_filter:
     input:
-        W("tmp/{sample}_{read}.poly.fastq")
+        W("{species}/tmp/{sample}_{read}.poly.fastq")
     output:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
+        W("{species}/fastq/{sample}_{read}.clean.fastq.gz")
     conda:
         "../envs/cutadapt.yaml"
     threads:
@@ -99,10 +99,15 @@ rule quality_filter:
         minlen = config["cutadapt"]["minlen"]
     shell:
         r"""
-        mkdir -p {WORK_DIR}/fastq {WORK_DIR}/tmp
-        cutadapt -j {threads} -q {params.q} {input} -o {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq -m {params.minlen}
-        gzip -c {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq > {output}
-        rm -f {WORK_DIR}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq
+        mkdir -p {WORK_DIR}/{wildcards.species}/fastq {WORK_DIR}/{wildcards.species}/tmp
+
+        cutadapt -j {threads} -q {params.q} {input} \
+            -o {WORK_DIR}/{wildcards.species}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq \
+            -m {params.minlen}
+
+        gzip -c {WORK_DIR}/{wildcards.species}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq > {output}
+
+        rm -f {WORK_DIR}/{wildcards.species}/tmp/{wildcards.sample}_{wildcards.read}.clean.fastq
         """
 
 ###############################################################################
@@ -110,10 +115,10 @@ rule quality_filter:
 ###############################################################################
 rule stats_post:
     input:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
+        W("{species}/fastq/{sample}_{read}.clean.fastq.gz")
     output:
-        W("reports_read/{sample}_{read}.post.stats.tsv"),
-        W("reports_read/{sample}_{read}.post.length.tsv")
+        W("{species}/reports_read/{sample}_{read}.post.stats.tsv"),
+        W("{species}/reports_read/{sample}_{read}.post.length.tsv")
     params:
         a3 = config["adapters"]["a_3prime"],
         g5 = config["adapters"]["g_5prime_loop"]
@@ -121,7 +126,7 @@ rule stats_post:
         "../envs/seqkit.yaml"
     shell:
         r"""
-        mkdir -p {WORK_DIR}/reports_read
+        mkdir -p {WORK_DIR}/{wildcards.species}/reports_read
         nb_reads=$(zgrep -c "." {input} | awk '{{print $1/4}}')
         nb_Rd1_SP=$(zgrep -c {params.g5} {input} || echo 0)
         nb_Rd2_SP=$(zgrep -c {params.a3} {input} || echo 0)
@@ -134,16 +139,18 @@ rule stats_post:
 ###############################################################################
 rule fastqc:
     input:
-        W("fastq/{sample}_{read}.clean.fastq.gz")
+        W("{species}/fastq/{sample}_{read}.clean.fastq.gz")
     output:
-        html = os.path.join(FASTQC_OUT, "{sample}_{read}.clean_fastqc.html"),
-        zip  = os.path.join(FASTQC_OUT, "{sample}_{read}.clean_fastqc.zip")
+        html=W("{species}/reports_read/fastqc/{sample}_{read}.clean_fastqc.html"),
+        zip=W("{species}/reports_read/fastqc/{sample}_{read}.clean_fastqc.zip")
     conda:
         "../envs/fastqc.yaml"
+    params:
+        outdir=lambda wc: W(f"{wc.species}/reports_read/fastqc")
     shell:
         r"""
-        mkdir -p {FASTQC_OUT}
-        fastqc {input} -o {FASTQC_OUT}
+        mkdir -p {params.outdir}
+        fastqc {input} -o {params.outdir}
         """
 
 ###############################################################################
@@ -151,11 +158,11 @@ rule fastqc:
 ###############################################################################
 rule repair_reads:
     input:
-        r1=W("fastq/{sample}_R1.clean.fastq.gz"),
-        r2=W("fastq/{sample}_R2.clean.fastq.gz")
+        r1=W("{species}/fastq/{sample}_R1.clean.fastq.gz"),
+        r2=W("{species}/fastq/{sample}_R2.clean.fastq.gz")
     output:
-        r1p=W("fastq/{sample}_R1.paired.fastq.gz"),
-        r2p=W("fastq/{sample}_R2.paired.fastq.gz")
+        r1p=W("{species}/fastq/{sample}_R1.paired.fastq.gz"),
+        r2p=W("{species}/fastq/{sample}_R2.paired.fastq.gz")
     threads: 1
     resources:
         repair_slots=1,
@@ -180,9 +187,9 @@ rule repair_reads:
 ###############################################################################
 rule stats_paired:
     input:
-        W("fastq/{sample}_R1.paired.fastq.gz")
+        W("{species}/fastq/{sample}_R1.paired.fastq.gz")
     output:
-        W("reports_read/{sample}_R1.paired.length.tsv")
+        W("{species}/reports_read/{sample}_R1.paired.length.tsv")
     conda:
         "../envs/seqkit.yaml"
     shell:
@@ -195,11 +202,11 @@ rule stats_paired:
 ###############################################################################
 rule kraken2:
     input:
-        r1=W("fastq/{sample}_R1.paired.fastq.gz"),
-        r2=W("fastq/{sample}_R2.paired.fastq.gz")
+        r1=W("{species}/fastq/{sample}_R1.paired.fastq.gz"),
+        r2=W("{species}/fastq/{sample}_R2.paired.fastq.gz")
     output:
-        report=W("reports_read/kraken/{sample}.report"),
-        kraken=W("reports_read/kraken/{sample}.kraken")
+        report=W("{species}/reports_read/kraken/{sample}.report"),
+        kraken=W("{species}/reports_read/kraken/{sample}.kraken")
     params:
         db=config["kraken"]["DB"]
     conda:
@@ -209,7 +216,7 @@ rule kraken2:
         mem_mb=450000
     shell:
         r"""
-        mkdir -p {WORK_DIR}/kraken
+        mkdir -p {WORK_DIR}/{wildcards.species}/reports_read/kraken
 
         kraken2 \
             --use-names \
@@ -227,16 +234,16 @@ rule kraken2:
 ###############################################################################
 
 def existing_raw_bam(wc):
-    return W(f"mapping/paired/{wc.sample}_F{FILTER_FLAG}.bam")
+    return W(f"{wc.species}/mapping/paired/{wc.sample}_F{FILTER_FLAG}.bam")
 
 rule extract_kraken_classified_positions:
     input:
-        kraken=W("reports_read/kraken/{sample}.kraken"),
-        bam=existing_raw_bam
+        kraken=W("{species}/reports_read/kraken/{sample}.kraken"),
+        bam=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}.bam")
     output:
-        bed=W("reports_read/kraken/{sample}.classified.positions.bed"),
-        tsv=W("reports_read/kraken/{sample}.classified.positions.tsv"),
-        stats=W("reports_read/kraken/{sample}.classified.stats.tsv")
+        bed=W("{species}/reports_read/kraken/{sample}.classified.positions.bed"),
+        tsv=W("{species}/reports_read/kraken/{sample}.classified.positions.tsv"),
+        stats=W("{species}/reports_read/kraken/{sample}.classified.stats.tsv")
     params:
         min_mapq=MAPQ
     conda:
@@ -259,10 +266,10 @@ rule extract_kraken_classified_positions:
 
 rule kraken_genomecov:
     input:
-        bed=W("reports_read/kraken/{sample}.classified.positions.bed"),
-        fai=config["reference"] + ".fai"
+        bed=W("{species}/reports_read/kraken/{sample}.classified.positions.bed"),
+        fai=lambda wc: REF_DICT[wc.species] + ".fai"
     output:
-        temp(W("reports_read/kraken/{sample}.classified.genomecov.bed"))
+        temp(W("{species}/reports_read/kraken/{sample}.classified.genomecov.bed"))
     conda:
         "../envs/allpurpose.yaml"
     shell:
@@ -271,9 +278,9 @@ rule kraken_genomecov:
 
 rule kraken_filter_coverage:
     input:
-        W("reports_read/kraken/{sample}.classified.genomecov.bed")
+        W("{species}/reports_read/kraken/{sample}.classified.genomecov.bed")
     output:
-        temp(W("reports_read/kraken/{sample}.classified.cov{cov}.bed"))
+        temp(W("{species}/reports_read/kraken/{sample}.classified.cov{cov}.bed"))
     conda:
         "../envs/allpurpose.yaml"
     shell:
@@ -283,13 +290,63 @@ rule kraken_filter_coverage:
 rule intersect_all_kraken_beds:
     input:
         lambda wc: expand(
-            W("reports_read/kraken/{sample}.classified.cov{cov}.bed"),
-            sample=SAMPLES,
+            W("{species}/reports_read/kraken/{sample}.classified.cov{cov}.bed"),
+            species=wc.species,
+            sample=SAMPLES_BY_SPECIES[wc.species],
             cov=wc.cov
         )
     output:
-        W("reports_read/kraken/classified.positions.cov{cov}.minsamples{minsamples}.bed")
+        W("{species}/reports_read/kraken/classified.positions.cov{cov}.minsamples{minsamples}.bed")
     conda:
         "../envs/allpurpose.yaml"
     shell:
         r"""bedtools multiinter -i {input} | awk -v n={wildcards.minsamples} 'BEGIN{{OFS="\t"}} $4>=n {{print $1,$2,$3}}' | bedtools merge > {output}"""
+
+###############################################################################
+# AdapterRemoval merge
+###############################################################################
+rule adapterremoval_collapse:
+    input:
+        r1p=W("{species}/fastq/{sample}_R1.paired.fastq.gz"),
+        r2p=W("{species}/fastq/{sample}_R2.paired.fastq.gz")
+    output:
+        merged=W("{species}/fastq/{sample}.collapsed.fastq.gz"),
+        r1=W("{species}/fastq/{sample}.R1_uncoll.fastq.gz"),
+        r2=W("{species}/fastq/{sample}.R2_uncoll.fastq.gz")
+    conda:
+        "../envs/adapterremoval3.yaml"
+    threads:
+        config["adapterremoval"]["threads"]
+    params:
+        minq=config["adapterremoval"]["minquality"],
+        minlen=config["adapterremoval"]["minlength"]
+    shell:
+        r"""
+        adapterremoval \
+            --in-file1 {input.r1p} \
+            --in-file2 {input.r2p} \
+            --out-format fastq.gz \
+            --threads {threads} \
+            --trimns \
+            --trimqualities \
+            --minquality {params.minq} \
+            --minlength {params.minlen} \
+            --merge \
+            --out-merged {output.merged} \
+            --out-file1 {output.r1} \
+            --out-file2 {output.r2} 
+        """
+###############################################################################
+# post stats per read (again per-sample/read files)
+###############################################################################
+rule stats_collapsed:
+    input:
+        W("{species}/fastq/{sample}.collapsed.fastq.gz")
+    output:
+        W("{species}/reports_read/{sample}.collapsed.length.tsv")
+    conda:
+        "../envs/seqkit.yaml"
+    shell:
+        r"""
+        seqkit stats {input} > {output}
+        """

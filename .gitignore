@@ -8,6 +8,7 @@ scripts4testing/jobs
 HOLOGENE
 workflow/jobs
 workflow/.snakemake
+workflow/config/temp/
 ANGSD/
 BLAST/
 HOLOGENE/

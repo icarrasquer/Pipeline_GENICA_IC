@@ -194,7 +194,7 @@ rule all:
 # Rule files
 ###############################################################################
 
-include: "rules/read_processing.smk"
-include: "rules/mapping_collapsed.smk"
-include: "rules/mapping_paired.smk"
-include: "rules/mapping_postprocessing.smk"
+include: "rules_droc_oldlibprep/read_processing.smk"
+include: "rules_droc_oldlibprep/mapping_collapsed.smk"
+include: "rules_droc_oldlibprep/mapping_paired.smk"
+include: "rules_droc_oldlibprep/mapping_postprocessing.smk"
