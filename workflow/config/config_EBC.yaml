@@ -1,0 +1,44 @@
+input_dir: "/storage/research/ips_pal/GENOMICS/RAW"
+work_dir: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/READS_TO_BAM/"
+metadata_to_run: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Metadata_EBC_2022.txt"
+#Make sure the metadata to run the analysis contains
+# id_code seq_id cal_age folder
+
+references: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Species_genomes.txt"
+organelle_contigs_file: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Organelle_contigs.txt"
+unmasked_regions_file: "/storage/research/ips_pal/GENOMICS/WORK/GENICA/work_Ines/metadata/Unmasked_regions.txt"
+
+adapters:
+  a_3prime: "AGATCGGAAG"
+  g_5prime_loop: "CTTCCGATCT"
+
+cutadapt:
+  threads: 4
+  minlen: 30
+  qual: 30
+  error_rate: 1
+
+loop_stop:
+  max_hits: 100
+
+adapterremoval:
+  threads: 4
+  minquality: 30
+  minlength: 30
+
+bbmap:
+  xmx: "64g"
+
+kraken:
+  DB: "/storage/research/ips_pal/GENOMICS/REFERENCE_GENOMES/KRAKEN/PlusPF"
+  min_coverage: [ 2, 3, 5]
+  min_samples_overlap: [ 3, 5]
+
+bwa:
+  threads: 16
+  aln_opts: "-l 1024 -n 0.01 -o 2"
+
+samtools:
+  filter_flag: 2052 # unmapped + supplementary
+  mapq: 30
+

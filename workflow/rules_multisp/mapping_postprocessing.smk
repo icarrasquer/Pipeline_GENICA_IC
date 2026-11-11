@@ -186,11 +186,11 @@ rule split_organelle_nuclear_bam:
         nuclear_csi=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_nuclear.bam.csi")
     params:
         organelle_contigs=lambda wc: " ".join(
-            get_organelle_contigs(wc.species)
+            get_organelle_contigs(ref_species(wc.species))
         ),
         organelle_pattern=lambda wc: "|".join(
             re.escape(c)
-            for c in get_organelle_contigs(wc.species)
+            for c in get_organelle_contigs(ref_species(wc.species))
         )
     conda:
         "../envs/allpurpose.yaml"
@@ -220,7 +220,7 @@ rule coverage_summary:
     input:
         bam=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.bam"),
         csi=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.bam.csi"),
-        regions=lambda wc: UNMASKED_BED_DICT[wc.species]
+        regions=lambda wc: UNMASKED_BED_DICT[ref_species(wc.species)]
     output:
         summary=W(f"{{species}}/reports_mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_summary.tsv"),
         histogram=W(f"{{species}}/reports_mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.coverage_histogram.tsv")
@@ -228,7 +228,7 @@ rule coverage_summary:
         prefix=lambda wc: W(f"{wc.species}/tmp/{wc.sample}.collapsed_paired.{wc.genomic_region}"),
         organelle_pattern=lambda wc: "|".join(
             re.escape(c)
-            for c in get_organelle_contigs(wc.species)
+            for c in get_organelle_contigs(ref_species(wc.species))
         )
     conda:
         "../envs/allpurpose.yaml"
@@ -361,7 +361,7 @@ rule mapdamage:
     input:
         bam=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.bam"),
         csi=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}.bam.csi"),
-        ref=lambda wc: REF_DICT[wc.species]
+        ref=lambda wc: REF_DICT[ref_species(wc.species)]
     output:
         runtime=W(f"{{species}}/reports_mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}/Runtime_log.txt"),
         misincorp=W(f"{{species}}/reports_mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}_q{MAPQ}_rmkraken_dedup_{{genomic_region}}/misincorporation.txt")

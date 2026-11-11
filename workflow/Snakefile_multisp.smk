@@ -6,31 +6,27 @@ import pandas as pd
 configfile: "config/config_lowcov_xgen.yaml"
 
 META = pd.read_csv(config["metadata_to_run"], sep="\t")
-#Make sure the metadata to run the analysis contains
-# id_code seq_id cal_age folder
-
-OLD_TO_NEW = dict(zip(META["seq_id"], META["id_code"]))
-NEW_TO_OLD = dict(zip(META["id_code"], META["seq_id"]))
-SAMPLE_TO_FOLDER = dict(zip(META["id_code"], META["folder"]))
-
-SAMPLES = list(META["id_code"])
+for col in ["id_code", "seq_id", "sp", "folder"]: META[col] = META[col].astype(str).str.strip()
+META["read_sample"] = META["id_code"].map(lambda s: re.sub(r"_[^_]+_wgs$", "", s) if s.startswith("EBC_") else s)
+META["read_group"] = META.apply(lambda r: "EBC" if r.id_code.startswith("EBC_") else r.sp, axis=1)
+META["mapping_group"] = META.apply(lambda r: f"EBC/{r.sp}" if r.id_code.startswith("EBC_") else r.sp, axis=1)
+READ_META = META.drop_duplicates("read_sample")
+NEW_TO_OLD = dict(zip(READ_META["read_sample"], READ_META["seq_id"]))
+OLD_TO_NEW = dict(zip(READ_META["seq_id"], READ_META["read_sample"]))
+SAMPLE_TO_FOLDER = dict(zip(READ_META["read_sample"], READ_META["folder"]))
+READ_SAMPLE = dict(zip(META["id_code"], META["read_sample"]))
+READ_SPECIES = dict(zip(META["id_code"], META["read_group"]))
+def read_path(sample, filename): return W(READ_SPECIES[sample], filename.format(sample=READ_SAMPLE[sample]))
+SAMPLES = META["id_code"].tolist()
 META["cal_age"] = pd.to_numeric(META["cal_age"], errors="coerce")
-
-MODERN_SAMPLES = list(META.loc[META["cal_age"] == 0, "id_code"])
-ANCIENT_SAMPLES = list(META.loc[META["cal_age"] > 0, "id_code"])
-
-
-SAMPLE_TO_SPECIES = dict(
-    zip(META["id_code"], META["sp"])
-)
-
+MODERN_SAMPLES = META.loc[META["cal_age"] == 0, "id_code"].tolist()
+ANCIENT_SAMPLES = META.loc[META["cal_age"] > 0, "id_code"].tolist()
+SAMPLE_TO_SPECIES = dict(zip(META["id_code"], META["sp"]))
 SPECIES = META["sp"].unique().tolist()
 SAMPLE_SPECIES = META[["id_code", "sp"]].drop_duplicates()
-
-SAMPLES_BY_SPECIES = {
-    sp: group["id_code"].tolist()
-    for sp, group in META.groupby("sp")
-}
+SAMPLES_BY_SPECIES = {sp: g["id_code"].tolist() for sp, g in META.groupby("mapping_group")}
+READ_SAMPLES_BY_SPECIES = {sp: g["read_sample"].tolist() for sp, g in READ_META.groupby("read_group")}
+def ref_species(species): return species.split("/")[-1]
 
 REF_META = pd.read_csv(config["references"], sep=r"\s+")
 
@@ -61,7 +57,8 @@ READS = ["R1", "R2"]
 wildcard_constraints:
     read="R1|R2",
     branch="collapsed|paired",
-    sample="|".join(re.escape(s) for s in SAMPLES)
+    sample="|".join(re.escape(s) for s in SAMPLES + READ_META["read_sample"].tolist()),
+    species="|".join(re.escape(s) for s in list(SAMPLES_BY_SPECIES) + list(READ_SAMPLES_BY_SPECIES))
 
 INPUT_DIR = config["input_dir"]
 WORK_DIR = config["work_dir"]
@@ -106,38 +103,40 @@ print("SAMPLE REGEX:", "|".join(re.escape(s) for s in SAMPLES[:5]))
 
 ALL_TARGETS = []
 
-for sp, samples in SAMPLES_BY_SPECIES.items():
-
+for sp, read_samples in READ_SAMPLES_BY_SPECIES.items():
     # Read processing
     ALL_TARGETS += expand(
         W("{species}/reports_read/{sample}_{read}.pre.length.tsv"),
-        species=sp, sample=samples, read=READS
+        species=sp, sample=read_samples, read=READS
     )
 
     ALL_TARGETS += expand(
         W("{species}/reports_read/{sample}_{read}.post.length.tsv"),
-        species=sp, sample=samples, read=READS
+        species=sp, sample=read_samples, read=READS
     )
 
     ALL_TARGETS += expand(
         W("{species}/fastq/{sample}_{read}.clean.fastq.gz"),
-        species=sp, sample=samples, read=READS
+        species=sp, sample=read_samples, read=READS
     )
 
     ALL_TARGETS += expand(
         W("{species}/reports_read/{sample}_R1.paired.length.tsv"),
-        species=sp, sample=samples
+        species=sp, sample=read_samples
     )
 
     ALL_TARGETS += expand(
         W("{species}/reports_read/fastqc/{sample}_{read}.clean_fastqc.html"),
-        species=sp, sample=samples, read=READS
+        species=sp, sample=read_samples, read=READS
     )
 
     ALL_TARGETS += expand(
         W("{species}/reports_read/{sample}.collapsed.length.tsv"),
-        species=sp, sample=samples
+        species=sp, sample=read_samples
     )
+
+
+for sp, samples in SAMPLES_BY_SPECIES.items():
 
     # Merged BAM
     ALL_TARGETS += expand(

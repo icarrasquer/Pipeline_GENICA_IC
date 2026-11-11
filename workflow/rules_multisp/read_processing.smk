@@ -238,7 +238,7 @@ def existing_raw_bam(wc):
 
 rule extract_kraken_classified_positions:
     input:
-        kraken=W("{species}/reports_read/kraken/{sample}.kraken"),
+        kraken=lambda wc: read_path(wc.sample, "reports_read/kraken/{sample}.kraken"),
         bam=W(f"{{species}}/mapping/collapsed_paired/{{sample}}_F{FILTER_FLAG}.bam")
     output:
         bed=W("{species}/reports_read/kraken/{sample}.classified.positions.bed"),
@@ -267,7 +267,7 @@ rule extract_kraken_classified_positions:
 rule kraken_genomecov:
     input:
         bed=W("{species}/reports_read/kraken/{sample}.classified.positions.bed"),
-        fai=lambda wc: REF_DICT[wc.species] + ".fai"
+        fai=lambda wc: REF_DICT[ref_species(wc.species)] + ".fai"
     output:
         temp(W("{species}/reports_read/kraken/{sample}.classified.genomecov.bed"))
     conda:

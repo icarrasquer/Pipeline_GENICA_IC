@@ -5,8 +5,8 @@
 
 rule bwa_aln_collapsed:
     input:
-        ref=lambda wc: REF_DICT[wc.species],
-        fq=W("{species}/fastq/{sample}.collapsed.fastq.gz")
+        ref=lambda wc: REF_DICT[ref_species(wc.species)],
+        fq=lambda wc: read_path(wc.sample, "fastq/{sample}.collapsed.fastq.gz")
     output:
         temp(W("{species}/mapping/collapsed/{sample}.sai"))
     conda:
@@ -29,9 +29,9 @@ rule bwa_aln_collapsed:
 
 rule bwa_samse_collapsed:
     input:
-        ref=lambda wc: REF_DICT[wc.species],
+        ref=lambda wc: REF_DICT[ref_species(wc.species)],
         sai=W("{species}/mapping/collapsed/{sample}.sai"),
-        fq=W("{species}/fastq/{sample}.collapsed.fastq.gz")
+        fq=lambda wc: read_path(wc.sample, "fastq/{sample}.collapsed.fastq.gz")
     output:
         temp(W("{species}/mapping/collapsed/{sample}.bam"))
     conda:
@@ -52,9 +52,9 @@ rule bwa_samse_collapsed:
 
 rule bwa_aln_uncollapsed:
     input:
-        ref=lambda wc: REF_DICT[wc.species],
-        r1=W("{species}/fastq/{sample}.R1_uncoll.fastq.gz"),
-        r2=W("{species}/fastq/{sample}.R2_uncoll.fastq.gz")
+        ref=lambda wc: REF_DICT[ref_species(wc.species)],
+        r1=lambda wc: read_path(wc.sample, "fastq/{sample}.R1_uncoll.fastq.gz"),
+        r2=lambda wc: read_path(wc.sample, "fastq/{sample}.R2_uncoll.fastq.gz")
     output:
         sai1=temp(W("{species}/mapping/paired/{sample}_R1.sai")),
         sai2=temp(W("{species}/mapping/paired/{sample}_R2.sai"))
@@ -82,11 +82,11 @@ rule bwa_aln_uncollapsed:
 
 rule bwa_sampe_uncollapsed:
     input:
-        ref=lambda wc: REF_DICT[wc.species],
+        ref=lambda wc: REF_DICT[ref_species(wc.species)],
         sai1=W("{species}/mapping/paired/{sample}_R1.sai"),
         sai2=W("{species}/mapping/paired/{sample}_R2.sai"),
-        r1=W("{species}/fastq/{sample}.R1_uncoll.fastq.gz"),
-        r2=W("{species}/fastq/{sample}.R2_uncoll.fastq.gz")
+        r1=lambda wc: read_path(wc.sample, "fastq/{sample}.R1_uncoll.fastq.gz"),
+        r2=lambda wc: read_path(wc.sample, "fastq/{sample}.R2_uncoll.fastq.gz")
     output:
         temp(W("{species}/mapping/paired/{sample}.bam"))
     conda:
